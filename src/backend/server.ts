@@ -118,3 +118,64 @@ res.json({
     });
   }
 });
+
+app.post("/onboarding", async (req, res) => {
+  try {
+
+    const token =
+      req.headers.authorization?.split(
+        " "
+      )[1];
+
+    if (!token) {
+      return res.status(401).json({
+        message: "Unauthorized",
+      });
+    }
+
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET as string
+    ) as {
+      userId: string;
+    };
+
+    const {
+      college,
+      skills,
+      role,
+      location,
+      bio,
+      experience,
+    } = req.body;
+
+    await prisma.user.update({
+      where: {
+        id: decoded.userId,
+      },
+
+      data: {
+        college,
+        skills,
+        role,
+        location,
+        bio,
+        experience,
+      },
+    });
+
+    res.json({
+      success: true,
+      message:
+        "Profile updated successfully",
+    });
+
+  } catch (error) {
+
+    console.log(error);
+
+    res.status(500).json({
+      message: "Server Error",
+    });
+  }
+});
