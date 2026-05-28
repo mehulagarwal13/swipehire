@@ -38,6 +38,13 @@ export default function LoginPage() {
 
       alert(data.message);
 
+localStorage.setItem(
+  "token",
+  data.token
+);
+
+window.location.href = "/dashboard";
+
       // Save token later
       // localStorage.setItem("token", data.token);
 

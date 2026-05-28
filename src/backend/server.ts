@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import bcrypt from "bcryptjs";
 import prisma from "./prisma";
+import jwt from "jsonwebtoken";
 
 const app = express();
 
@@ -92,11 +93,23 @@ app.post("/login", async (req, res) => {
       });
     }
 
-    res.json({
-      success: true,
-      message: "Login successful",
-      user,
-    });
+    const token = jwt.sign(
+  {
+    userId: user.id,
+    email: user.email,
+  },
+  process.env.JWT_SECRET as string,
+  {
+    expiresIn: "7d",
+  }
+);
+
+res.json({
+  success: true,
+  message: "Login successful",
+  token,
+  user,
+});
   } catch (error) {
     console.log(error);
 
