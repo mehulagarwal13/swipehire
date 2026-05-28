@@ -61,3 +61,47 @@ app.post("/register", async (req, res) => {
 app.listen(5000, () => {
   console.log("Server running on port 5000");
 });
+
+app.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: {
+        email,
+      },
+    });
+
+    if (!user) {
+      return res.json({
+        message: "User not found",
+      });
+    }
+
+    // Compare password
+    const isPasswordCorrect =
+      await bcrypt.compare(
+        password,
+        user.password
+      );
+
+    if (!isPasswordCorrect) {
+      return res.json({
+        message: "Invalid credentials",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Login successful",
+      user,
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      message: "Server Error",
+    });
+  }
+});
