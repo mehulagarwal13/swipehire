@@ -1,0 +1,126 @@
+import axios, { type AxiosInstance } from "axios";
+import * as SecureStore from "expo-secure-store";
+
+const BASE = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+
+export const api: AxiosInstance = axios.create({
+  baseURL: BASE,
+  headers: { "Content-Type": "application/json" },
+  timeout: 15000,
+});
+
+api.interceptors.request.use(async (config) => {
+  const token = await SecureStore.getItemAsync("access_token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+api.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    const msg = error.response?.data?.detail ?? error.message ?? "Something went wrong";
+    return Promise.reject(new Error(msg));
+  }
+);
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+export const authApi = {
+  sendOtp: (phone: string) =>
+    api.post<{ message: string; dev_otp?: string }>("/auth/send-otp", { phone }).then(r => r.data),
+  verifyOtp: (phone: string, otp: string) =>
+    api.post<TokenResponse>("/auth/verify-otp", { phone, otp }).then(r => r.data),
+  refresh: (refreshToken: string) =>
+    api.post<TokenResponse>("/auth/refresh", { refresh_token: refreshToken }).then(r => r.data),
+};
+
+// ─── Jobs ─────────────────────────────────────────────────────────────────────
+export const jobsApi = {
+  getFeed: (limit = 20, offset = 0) =>
+    api.get<JobCard[]>(`/jobs/feed?limit=${limit}&offset=${offset}`).then(r => r.data),
+};
+
+// ─── Swipes ───────────────────────────────────────────────────────────────────
+export const swipesApi = {
+  record: (jobId: string, direction: "left" | "right" | "up", matchScore?: number) =>
+    api.post("/swipes", { job_id: jobId, direction, match_score: matchScore }).then(r => r.data),
+  getSaved: () => api.get("/swipes/saved").then(r => r.data),
+};
+
+// ─── Applications ─────────────────────────────────────────────────────────────
+export const applicationsApi = {
+  list: () => api.get<Application[]>("/applications").then(r => r.data),
+  updateStatus: (id: string, status: string) =>
+    api.patch(`/applications/${id}/status`, { status }).then(r => r.data),
+};
+
+// ─── Profile ──────────────────────────────────────────────────────────────────
+export const profileApi = {
+  get: () => api.get<UserProfile>("/profile").then(r => r.data),
+  update: (data: Partial<UserProfile>) => api.put<UserProfile>("/profile", data).then(r => r.data),
+};
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+export interface TokenResponse {
+  access_token: string;
+  refresh_token: string;
+  user_id: string;
+  is_onboarded: boolean;
+}
+
+export interface JobCard {
+  id: string;
+  title: string;
+  company: string;
+  company_logo: string | null;
+  location: string | null;
+  is_remote: boolean;
+  salary_min_lpa: number | null;
+  salary_max_lpa: number | null;
+  experience_min: number;
+  experience_max: number;
+  skills_required: string[];
+  description: string | null;
+  apply_url: string | null;
+  job_type: string | null;
+  industry: string | null;
+  source: string;
+  posted_at: string;
+  match_score: number;
+  score_details: Record<string, number>;
+  highlights: string[];
+}
+
+export interface Application {
+  id: string;
+  job_id: string;
+  title: string;
+  company: string;
+  company_logo: string | null;
+  location: string | null;
+  status: string;
+  applied_at: string;
+  updated_at: string;
+  auto_applied: boolean;
+  notes: string | null;
+  interview_date: string | null;
+  offer_amount: number | null;
+  match_score: number | null;
+}
+
+export interface UserProfile {
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  headline: string | null;
+  skills: string[];
+  experience_years: number;
+  current_location: string | null;
+  preferred_locations: string[];
+  min_salary_lpa: number | null;
+  max_salary_lpa: number | null;
+  job_types: string[];
+  profile_score: number;
+  is_onboarded: boolean;
+  resume_url: string | null;
+}
